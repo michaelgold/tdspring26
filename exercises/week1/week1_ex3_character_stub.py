@@ -1,8 +1,9 @@
 """Week 1 Exercise 3: placeholder character import + automated render pipeline."""
 
-import bpy
-from mathutils import Vector
+import math
 from pathlib import Path
+
+import bpy
 
 SAVE_NAME = "week1ex3.blend"
 RENDER_PREFIX = "week1ex3_"
@@ -36,7 +37,7 @@ def clear_objects() -> None:
 def build_environment() -> None:
     bpy.ops.mesh.primitive_plane_add(size=40.0, location=(0.0, 0.0, -1.0))
     plane = bpy.context.active_object
-    mat = bpy.data.materials.new(name="EnvFloor")
+    mat = bpy.data.materials.new(name="EnvFloor")  # type: ignore[attr-defined]
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     bsdf.inputs[0].default_value = (0.02, 0.02, 0.025, 1.0)
@@ -62,53 +63,65 @@ def import_character(asset_path: Path) -> bpy.types.Object:
 def animate_character(obj: bpy.types.Object) -> None:
     obj.animation_data_clear()
     beats = (
-        (FRAME_START, Vector((0.0, 0.0, 0.0))),
-        (30, Vector((0.5, 1.5, 0.0))),
-        (60, Vector((1.5, 3.0, 0.0))),
-        (FRAME_END, Vector((3.5, 4.5, 0.0))),
+        (FRAME_START, (0.0, 0.0, 0.0)),
+        (30, (0.5, 1.5, 0.0)),
+        (60, (1.5, 3.0, 0.0)),
+        (FRAME_END, (3.5, 4.5, 0.0)),
     )
     for frame, location in beats:
         obj.location = location
         obj.keyframe_insert(data_path="location", frame=frame)
 
 
-def point_camera_to_target(cam: bpy.types.Object, target_loc: Vector) -> None:
-    direction = target_loc - cam.location
-    cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+def point_camera_to_target(
+    cam: bpy.types.Object, target_loc: tuple[float, float, float]
+) -> None:
+    ox, oy, oz = cam.location
+    tx, ty, tz = target_loc
+    dx, dy, dz = tx - ox, ty - oy, tz - oz
+    distance = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if distance == 0.0:
+        return
+    fx, fy, fz = -(dx / distance), -(dy / distance), -(dz / distance)
+    yaw = math.atan2(fx, fy)
+    pitch = math.atan2(fz, math.hypot(fx, fy))
+    cam.rotation_euler = (pitch, 0.0, yaw)
 
 
 def setup_camera(target: bpy.types.Object) -> bpy.types.Object:
-    camera_data = bpy.data.cameras.new(name="FollowCamera")
-    camera_object = bpy.data.objects.new("FollowCamera", camera_data)
-    bpy.context.collection.objects.link(camera_object)
-    camera_object.location = Vector(
-        (0.0, target.location.y + Y_OFFSET, target.location.z + Z_OFFSET)
-    )
+    camera_data = bpy.data.cameras.new(name="FollowCamera")  # type: ignore[attr-defined]
+    camera_object = bpy.data.objects.new("FollowCamera", camera_data)  # type: ignore[attr-defined]
+    bpy.context.collection.objects.link(camera_object)  # type: ignore[attr-defined]
+    target_y, target_z = target.location.y, target.location.z
+    camera_object.location = (0.0, target_y + Y_OFFSET, target_z + Z_OFFSET)
     bpy.context.scene.camera = camera_object
     for frame in range(FRAME_START, FRAME_END + 1, STEP):
         bpy.context.scene.frame_set(frame)
         target_location = target.matrix_world.translation
-        camera_object.location.x = target_location.x
-        camera_object.location.y = target_location.y + Y_OFFSET
-        camera_object.location.z = max(target_location.z + Z_OFFSET, 0.5)
-        point_camera_to_target(camera_object, target_location)
+        target_tuple = tuple(target_location)
+        camera_object.location = (
+            target_tuple[0],
+            target_tuple[1] + Y_OFFSET,
+            max(target_tuple[2] + Z_OFFSET, 0.5),
+        )
+        point_camera_to_target(camera_object, target_tuple)
         camera_object.keyframe_insert(data_path="location", frame=frame)
         camera_object.keyframe_insert(data_path="rotation_euler", frame=frame)
     return camera_object
 
 
 def add_lights(target: bpy.types.Object) -> None:
-    sun_data = bpy.data.lights.new(name="RigKey", type="SUN")
-    sun = bpy.data.objects.new("RigKey", sun_data)
-    bpy.context.collection.objects.link(sun)
-    sun.location = Vector((12.0, -12.0, 20.0))
-    point_camera_to_target(sun, target.location)
+    sun_data = bpy.data.lights.new(name="RigKey", type="SUN")  # type: ignore[attr-defined]
+    sun = bpy.data.objects.new("RigKey", sun_data)  # type: ignore[attr-defined]
+    bpy.context.collection.objects.link(sun)  # type: ignore[attr-defined]
+    sun.location = (12.0, -12.0, 20.0)
+    point_camera_to_target(sun, tuple(target.location))
     sun_data.energy = 4.0
 
-    rim_data = bpy.data.lights.new(name="RigRim", type="AREA")
-    rim = bpy.data.objects.new("RigRim", rim_data)
-    bpy.context.collection.objects.link(rim)
-    rim.location = Vector((-8.0, 6.0, 5.0))
+    rim_data = bpy.data.lights.new(name="RigRim", type="AREA")  # type: ignore[attr-defined]
+    rim = bpy.data.objects.new("RigRim", rim_data)  # type: ignore[attr-defined]
+    bpy.context.collection.objects.link(rim)  # type: ignore[attr-defined]
+    rim.location = (-8.0, 6.0, 5.0)
     rim.rotation_euler = (0.0, 0.0, 1.2)
     rim_data.energy = 1200.0
     rim_data.shape = "RECTANGLE"

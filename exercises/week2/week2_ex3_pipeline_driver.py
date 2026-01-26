@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 import bpy
-from mathutils import Vector
 
 SAVE_NAME = "week2ex3.blend"
 RENDER_PREFIX = "week2_ex3_"
@@ -53,7 +52,7 @@ def add_base_environment() -> None:
     bpy.ops.mesh.primitive_plane_add(size=40.0, location=(0.0, 0.0, 0.0))
     plane = bpy.context.active_object
     plane.name = "PipelineFloor"
-    mat = bpy.data.materials.new(name="PipelineFloorMaterial")
+    mat = bpy.data.materials.new(name="PipelineFloorMaterial")  # type: ignore
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     bsdf.inputs[0].default_value = (0.04, 0.04, 0.05, 1.0)
@@ -66,7 +65,7 @@ def add_hero_object() -> bpy.types.Object:
     hero = bpy.context.active_object
     hero.name = "PipelineHero"
     bpy.ops.object.shade_smooth()
-    mat = bpy.data.materials.new(name="PipelineHeroMaterial")
+    mat = bpy.data.materials.new(name="PipelineHeroMaterial")  # type: ignore
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     bsdf.inputs[0].default_value = (0.2, 0.6, 0.9, 1.0)
@@ -75,17 +74,18 @@ def add_hero_object() -> bpy.types.Object:
     return hero
 
 
-def point(obj: bpy.types.Object, target: Vector) -> None:
-    direction = target - obj.location
+def point(obj: bpy.types.Object, target: tuple[float, float, float]) -> None:
+    from mathutils import Vector
+    direction = Vector(target) - obj.location
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
 
 def create_camera(
-    name: str, location: Vector, target: Vector, lens: float = 50.0
+    name: str, location: tuple[float, float, float], target: tuple[float, float, float], lens: float = 50.0
 ) -> bpy.types.Object:
-    camera_data = bpy.data.cameras.new(name=name)
-    camera_obj = bpy.data.objects.new(name, camera_data)
-    bpy.context.collection.objects.link(camera_obj)
+    camera_data = bpy.data.cameras.new(name=name)  # type: ignore
+    camera_obj = bpy.data.objects.new(name, camera_data)  # type: ignore
+    bpy.context.collection.objects.link(camera_obj)  # type: ignore
     camera_obj.location = location
     camera_data.lens = lens
     point(camera_obj, target)
@@ -94,17 +94,17 @@ def create_camera(
 
 
 def create_light_rig() -> None:
-    sun_data = bpy.data.lights.new(name="PipelineKey", type="SUN")
-    sun = bpy.data.objects.new("PipelineKey", sun_data)
-    bpy.context.collection.objects.link(sun)
-    sun.location = Vector((10.0, -6.0, 14.0))
-    point(sun, Vector((0.0, 0.0, 1.0)))
+    sun_data = bpy.data.lights.new(name="PipelineKey", type="SUN")  # type: ignore
+    sun = bpy.data.objects.new("PipelineKey", sun_data)  # type: ignore
+    bpy.context.collection.objects.link(sun)  # type: ignore
+    sun.location = (10.0, -6.0, 14.0)
+    point(sun, (0.0, 0.0, 1.0))
     sun_data.energy = 4.5
 
-    rim_data = bpy.data.lights.new(name="PipelineRim", type="AREA")
-    rim = bpy.data.objects.new("PipelineRim", rim_data)
-    bpy.context.collection.objects.link(rim)
-    rim.location = Vector((-8.0, 4.0, 6.0))
+    rim_data = bpy.data.lights.new(name="PipelineRim", type="AREA")  # type: ignore
+    rim = bpy.data.objects.new("PipelineRim", rim_data)  # type: ignore
+    bpy.context.collection.objects.link(rim)  # type: ignore
+    rim.location = (-8.0, 4.0, 6.0)
     rim.rotation_euler = (0.0, 0.0, 1.2)
     rim_data.energy = 900.0
     rim_data.shape = "RECTANGLE"
@@ -126,7 +126,7 @@ def build_turntable_scene() -> None:
         hero.rotation_euler = (0.0, 0.0, rotation)
         hero.keyframe_insert(data_path="rotation_euler", index=2, frame=frame)
     create_camera(
-        "TurntableCam", Vector((8.0, -8.0, 5.0)), Vector((0.0, 0.0, 1.0)), lens=45.0
+        "TurntableCam", (8.0, -8.0, 5.0), (0.0, 0.0, 1.0), lens=45.0
     )
 
 
@@ -134,9 +134,9 @@ def build_closeup_scene() -> None:
     bpy.context.scene.frame_start = 1
     bpy.context.scene.frame_end = 48
     hero = add_hero_object()
-    hero.location = Vector((0.0, 0.0, 0.5))
+    hero.location = (0.0, 0.0, 0.5)
     camera = create_camera(
-        "CloseupCam", Vector((1.5, -1.0, 1.5)), Vector((0.0, 0.0, 0.8)), lens=75.0
+        "CloseupCam", (1.5, -1.0, 1.5), (0.0, 0.0, 0.8), lens=75.0
     )
     camera.data.dof.use_dof = True
     camera.data.dof.focus_distance = 1.5

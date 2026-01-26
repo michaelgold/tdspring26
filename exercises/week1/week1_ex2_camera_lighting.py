@@ -1,8 +1,9 @@
 """Week 1 Exercise 2: build a procedural camera + lighting rig and render a still."""
 
-import bpy
-from mathutils import Vector
+import math
 from pathlib import Path
+
+import bpy
 
 SAVE_NAME = "week1ex2.blend"
 STILL_NAME = "week1ex2.png"
@@ -30,7 +31,7 @@ def clear_objects() -> None:
 def add_floor() -> bpy.types.Object:
     bpy.ops.mesh.primitive_plane_add(size=25.0, location=(0.0, 0.0, -1.5))
     plane = bpy.context.active_object
-    mat = bpy.data.materials.new(name="Floor")
+    mat = bpy.data.materials.new(name="Floor")  # type: ignore[attr-defined]
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     bsdf.inputs[0].default_value = (0.07, 0.07, 0.07, 1.0)
@@ -43,43 +44,53 @@ def add_hero_object() -> bpy.types.Object:
     bpy.ops.mesh.primitive_monkey_add(size=1.5, location=(0.0, 0.0, 0.0))
     obj = bpy.context.active_object
     obj.name = "HeroSuzanne"
-    mat = bpy.data.materials.new(name="Hero")
+    mat = bpy.data.materials.new(name="Hero")  # type: ignore[attr-defined]
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     bsdf.inputs[0].default_value = (0.85, 0.5, 0.1, 1.0)
-    bsdf.inputs[5].default_value = 0.4  # metallic
+    bsdf.inputs["Metallic"].default_value = 0.4
     obj.data.materials.append(mat)
     bpy.ops.object.shade_smooth()
     return obj
 
 
-def aim_at(obj: bpy.types.Object, target: Vector) -> None:
-    direction = target - obj.location
-    obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+def aim_at(obj: bpy.types.Object, target: tuple[float, float, float]) -> None:
+    ox, oy, oz = obj.location
+    tx, ty, tz = target
+    dx, dy, dz = tx - ox, ty - oy, tz - oz
+    distance = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if distance == 0.0:
+        return
+
+    # Local -Z should point toward the target; flip the forward vector to derive pitch/yaw.
+    fx, fy, fz = -(dx / distance), -(dy / distance), -(dz / distance)
+    yaw = math.atan2(fx, fy)
+    pitch = math.atan2(fz, math.hypot(fx, fy))
+    obj.rotation_euler = (pitch, 0.0, yaw)
 
 
-def add_camera(target: Vector) -> bpy.types.Object:
-    camera_data = bpy.data.cameras.new(name="TD_Camera")
-    camera_object = bpy.data.objects.new("TD_Camera", camera_data)
-    bpy.context.collection.objects.link(camera_object)
-    camera_object.location = Vector((8.0, -8.0, 6.0))
+def add_camera(target: tuple[float, float, float]) -> bpy.types.Object:
+    camera_data = bpy.data.cameras.new(name="TD_Camera")  # type: ignore[attr-defined]
+    camera_object = bpy.data.objects.new("TD_Camera", camera_data)  # type: ignore[attr-defined]
+    bpy.context.collection.objects.link(camera_object)  # type: ignore[attr-defined]
+    camera_object.location = (8.0, -8.0, 6.0)
     aim_at(camera_object, target)
     bpy.context.scene.camera = camera_object
     return camera_object
 
 
-def add_lights(target: Vector) -> None:
-    sun_data = bpy.data.lights.new(name="KeySun", type="SUN")
-    sun = bpy.data.objects.new("KeySun", sun_data)
-    bpy.context.collection.objects.link(sun)
-    sun.location = Vector((12.0, -6.0, 15.0))
+def add_lights(target: tuple[float, float, float]) -> None:
+    sun_data = bpy.data.lights.new(name="KeySun", type="SUN")  # type: ignore[attr-defined]
+    sun = bpy.data.objects.new("KeySun", sun_data)  # type: ignore[attr-defined]
+    bpy.context.collection.objects.link(sun)  # type: ignore[attr-defined]
+    sun.location = (12.0, -6.0, 15.0)
     aim_at(sun, target)
     sun_data.energy = 2.5
 
-    fill_data = bpy.data.lights.new(name="FillLight", type="AREA")
-    fill = bpy.data.objects.new("FillLight", fill_data)
-    bpy.context.collection.objects.link(fill)
-    fill.location = Vector((-6.0, 4.0, 5.0))
+    fill_data = bpy.data.lights.new(name="FillLight", type="AREA")  # type: ignore[attr-defined]
+    fill = bpy.data.objects.new("FillLight", fill_data)  # type: ignore[attr-defined]
+    bpy.context.collection.objects.link(fill)  # type: ignore[attr-defined]
+    fill.location = (-6.0, 4.0, 5.0)
     fill.rotation_euler = (0.0, 0.0, 0.6)
     fill_data.energy = 600.0
     fill_data.shape = "RECTANGLE"
@@ -98,8 +109,9 @@ def main() -> None:
     clear_objects()
     add_floor()
     hero = add_hero_object()
-    add_camera(hero.location)
-    add_lights(hero.location)
+    hero_location = tuple(hero.location)
+    add_camera(hero_location)
+    add_lights(hero_location)
     render_still(Path(__file__).with_name(STILL_NAME))
     bpy.ops.wm.save_as_mainfile(filepath=str(Path(__file__).with_name(SAVE_NAME)))
     print("Week 1 Exercise 2 complete")

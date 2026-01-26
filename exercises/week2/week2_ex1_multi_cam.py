@@ -1,8 +1,9 @@
 """Week 2 Exercise 1: multi-camera and lighting preset automation."""
 
-import bpy
-from mathutils import Vector
+import math
 from pathlib import Path
+
+import bpy
 
 SAVE_NAME = "week2ex1.blend"
 OUTPUT_PREFIX = "week2_ex1_"
@@ -67,7 +68,7 @@ def clear_objects() -> None:
 def add_floor() -> None:
     bpy.ops.mesh.primitive_plane_add(size=30.0, location=(0.0, 0.0, -1.0))
     plane = bpy.context.active_object
-    mat = bpy.data.materials.new(name="Week2Floor")
+    mat = bpy.data.materials.new(name="Week2Floor")  # type: ignore[attr-defined]
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     bsdf.inputs[0].default_value = (0.05, 0.05, 0.06, 1.0)
@@ -79,7 +80,7 @@ def add_hero() -> bpy.types.Object:
     hero = bpy.context.active_object
     hero.name = "Week2Hero"
     bpy.ops.object.shade_smooth()
-    mat = bpy.data.materials.new(name="Week2HeroMaterial")
+    mat = bpy.data.materials.new(name="Week2HeroMaterial")  # type: ignore[attr-defined]
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     bsdf.inputs[0].default_value = (0.45, 0.7, 1.0, 1.0)
@@ -89,23 +90,23 @@ def add_hero() -> bpy.types.Object:
 
 
 def create_camera() -> bpy.types.Object:
-    camera_data = bpy.data.cameras.new(name="PresetCamera")
-    camera_obj = bpy.data.objects.new("PresetCamera", camera_data)
-    bpy.context.collection.objects.link(camera_obj)
+    camera_data = bpy.data.cameras.new(name="PresetCamera")  # type: ignore[attr-defined]
+    camera_obj = bpy.data.objects.new("PresetCamera", camera_data)  # type: ignore[attr-defined]
+    bpy.context.collection.objects.link(camera_obj)  # type: ignore[attr-defined]
     bpy.context.scene.camera = camera_obj
     return camera_obj
 
 
 def create_lights() -> tuple[bpy.types.Object, bpy.types.Object]:
-    key_data = bpy.data.lights.new(name="PresetKey", type="SUN")
-    key = bpy.data.objects.new("PresetKey", key_data)
-    bpy.context.collection.objects.link(key)
-    key.location = Vector((12.0, -8.0, 16.0))
+    key_data = bpy.data.lights.new(name="PresetKey", type="SUN")  # type: ignore[attr-defined]
+    key = bpy.data.objects.new("PresetKey", key_data)  # type: ignore[attr-defined]
+    bpy.context.collection.objects.link(key)  # type: ignore[attr-defined]
+    key.location = (12.0, -8.0, 16.0)
 
-    fill_data = bpy.data.lights.new(name="PresetFill", type="AREA")
-    fill = bpy.data.objects.new("PresetFill", fill_data)
-    bpy.context.collection.objects.link(fill)
-    fill.location = Vector((-6.0, 4.0, 5.0))
+    fill_data = bpy.data.lights.new(name="PresetFill", type="AREA")  # type: ignore[attr-defined]
+    fill = bpy.data.objects.new("PresetFill", fill_data)  # type: ignore[attr-defined]
+    bpy.context.collection.objects.link(fill)  # type: ignore[attr-defined]
+    fill.location = (-6.0, 4.0, 5.0)
     fill.rotation_euler = (0.0, 0.0, 0.4)
     fill_data.shape = "RECTANGLE"
     fill_data.size = 6.0
@@ -113,9 +114,17 @@ def create_lights() -> tuple[bpy.types.Object, bpy.types.Object]:
     return key, fill
 
 
-def point(obj: bpy.types.Object, target: Vector) -> None:
-    direction = target - obj.location
-    obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+def point(obj: bpy.types.Object, target: tuple[float, float, float]) -> None:
+    ox, oy, oz = obj.location
+    tx, ty, tz = target
+    dx, dy, dz = tx - ox, ty - oy, tz - oz
+    distance = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if distance == 0.0:
+        return
+    fx, fy, fz = -(dx / distance), -(dy / distance), -(dz / distance)
+    yaw = math.atan2(fx, fy)
+    pitch = math.atan2(fz, math.hypot(fx, fy))
+    obj.rotation_euler = (pitch, 0.0, yaw)
 
 
 def apply_light_mode(key: bpy.types.Object, fill: bpy.types.Object, mode: str) -> None:
@@ -140,9 +149,9 @@ def main() -> None:
     output_dir = Path(__file__).parent
 
     for preset in CAMERA_PRESETS:
-        camera.location = Vector(preset["location"])
+        camera.location = preset["location"]
         camera.data.lens = preset["lens"]
-        target = Vector(preset["target"])
+        target = preset["target"]
         point(camera, target)
         point(key_light, target)
         apply_light_mode(key_light, fill_light, preset["light_mode"])
