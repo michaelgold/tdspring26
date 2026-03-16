@@ -1,0 +1,40 @@
+HW2 Manifest — Procedural Video Weaving Pipeline
+
+Pipeline summary (executed):
+1. Started from a Blender template scene (`vegas_hydrant.blend`) and generated scene variants by swapping pointcloud + character assets.
+2. Built the full 4-character × 5-scene combination set (20 `.blend` scenes), then batch-rendered synchronized MP4 outputs.
+3. Composited final remix videos procedurally from the synchronized render set using `exercises/project2/woven_remix.py`.
+
+Important debugging/quality fixes applied:
+- Pointcloud orientation fixes (rotation alignment and consistent facing across scenes).
+- Height alignment fixes for characters and pointcloud/armature Z offsets.
+- Character-to-scene integration fixes (parenting/track behavior and camera/lighting consistency).
+- Synchronization fix: all remixes use the common overlapping frame range so frame index `n` matches across every source clip.
+
+Final procedural editing paradigm:
+- Matrix model: 5 scenes × 4 characters; each shot selects one matrix cell `(scene, character)`.
+- Alternating switch rule:
+  - odd-numbered switches: change scene, keep character
+  - even-numbered switches: change character, keep scene
+- Character loop: 4-cycle (doozy → michelle → mouse → vegas → wrap).
+- Scene loop: 5-cycle (David_Bust → Hydrant_vertical → Mailbox → McLaren → Panzernashorn_Tobler → wrap).
+- Opening state used in final exports: parameterized; primary exports start from `McLaren_point_cloud` with selected opening character.
+- Loop-ending constraint: final segment returns to `McLaren_point_cloud` with a character different from the opening character.
+
+Section timing structures used in final exported versions:
+- Main procedural remix export (`woven_remix_1.mp4`): 1.2s, 0.8s, 0.5s, 6 frames.
+- Timing-variant procedural remix export (`woven_remix_2.mp4`): 0.25s, 0.5s, 0.8s, 1.2s.
+
+ASCII matrix (Scene × Character):
+                doozy   michelle   mouse   vegas
+David_Bust        X         X         X       X
+Hydrant_vertical  X         X         X       X
+Mailbox           X         X         X       X
+McLaren           X         X         X       X
+Panzernashorn     X         X         X       X
+
+Final outputs:
+- 20 synchronized scene-character MP4 renders (4×5 matrix coverage).
+- Main procedural remix export: `hw2/renders/finals/woven_remix_1.mp4`.
+- Timing-variant procedural remix export: `hw2/renders/finals/woven_remix_2.mp4`.
+
